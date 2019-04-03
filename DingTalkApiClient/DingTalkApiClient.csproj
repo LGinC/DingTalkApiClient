@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>liguo</Authors>
+    <Company>CDU</Company>
+    <Copyright>Copyright © 2019 CDU All Rights Reserved.</Copyright>
+    <PackageProjectUrl>https://github.com/LGinC/DingTalkApiClient</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/LGinC/DingTalkApiClient</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="dotnetCampus.SourceYard" Version="0.1.7213-alpha">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="WebApiClient.JIT" Version="0.3.5" />
+  </ItemGroup>
+
+</Project>
