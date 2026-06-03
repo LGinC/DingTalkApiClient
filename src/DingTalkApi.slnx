@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/DingTalkApi.Tests/DingTalkApi.Tests.csproj" />
+  </Folder>
+  <Project Path="DingTalkApi/DingTalkApi.csproj" />
+</Solution>

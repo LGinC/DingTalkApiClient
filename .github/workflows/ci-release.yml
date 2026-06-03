@@ -1,0 +1,145 @@
+name: Build, test, and publish
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - master
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  PROJECT_PATH: src/DingTalkApi/DingTalkApi.csproj
+  SOLUTION_PATH: src/DingTalkApi.slnx
+  PACKAGE_OUTPUT_PATH: artifacts/packages
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build --verbosity normal
+
+  publish-nuget:
+    name: Publish NuGet package
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Get package version from release tag
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ ! "$version" =~ ^[0-9]+(\.[0-9]+){1,3}([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag '$GITHUB_REF_NAME' is not a valid NuGet version. Use tags like v1.2.3." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+
+      - name: Pack
+        shell: bash
+        env:
+          PACKAGE_ID: ${{ vars.NUGET_PACKAGE_ID || 'DingTalkApi' }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+          PACKAGE_TITLE: ${{ vars.NUGET_TITLE || 'DingTalkApi' }}
+          PACKAGE_AUTHORS: ${{ vars.NUGET_AUTHORS || github.repository_owner }}
+          PACKAGE_COMPANY: ${{ vars.NUGET_COMPANY || github.repository_owner }}
+          PACKAGE_PRODUCT: ${{ vars.NUGET_PRODUCT || 'DingTalkApi' }}
+          PACKAGE_DESCRIPTION: ${{ vars.NUGET_DESCRIPTION || '钉钉 API 接口对接库' }}
+          PACKAGE_TAGS: ${{ vars.NUGET_TAGS || 'DingTalk;OpenAPI' }}
+          PACKAGE_PROJECT_URL: ${{ vars.NUGET_PROJECT_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          PACKAGE_RELEASE_NOTES: ${{ github.event.release.body }}
+          PACKAGE_LICENSE_EXPRESSION: ${{ vars.NUGET_LICENSE_EXPRESSION }}
+          PACKAGE_COPYRIGHT: ${{ vars.NUGET_COPYRIGHT }}
+        run: |
+          package_tags="${PACKAGE_TAGS//;/%3B}"
+
+          pack_args=(
+            "${PROJECT_PATH}"
+            --configuration Release
+            --no-restore
+            --output "${PACKAGE_OUTPUT_PATH}"
+            -p:PackageId="${PACKAGE_ID}"
+            -p:PackageVersion="${PACKAGE_VERSION}"
+            -p:Title="${PACKAGE_TITLE}"
+            -p:Authors="${PACKAGE_AUTHORS}"
+            -p:Company="${PACKAGE_COMPANY}"
+            -p:Product="${PACKAGE_PRODUCT}"
+            -p:Description="${PACKAGE_DESCRIPTION}"
+            -p:PackageTags="${package_tags}"
+            -p:PackageProjectUrl="${PACKAGE_PROJECT_URL}"
+            -p:RepositoryType=git
+            -p:RepositoryUrl="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+            -p:RepositoryCommit="${GITHUB_SHA}"
+            -p:RepositoryBranch="${GITHUB_REF_NAME}"
+            -p:ContinuousIntegrationBuild=true
+          )
+
+          if [[ -n "${PACKAGE_LICENSE_EXPRESSION}" ]]; then
+            pack_args+=(-p:PackageLicenseExpression="${PACKAGE_LICENSE_EXPRESSION}")
+          fi
+
+          if [[ -n "${PACKAGE_COPYRIGHT}" ]]; then
+            pack_args+=(-p:Copyright="${PACKAGE_COPYRIGHT}")
+          fi
+
+          if [[ -n "${PACKAGE_RELEASE_NOTES}" ]]; then
+            pack_args+=(-p:PackageReleaseNotes="${PACKAGE_RELEASE_NOTES}")
+          fi
+
+          dotnet pack "${pack_args[@]}"
+
+      - name: Publish to nuget.org
+        run: >
+          dotnet nuget push "${{ env.PACKAGE_OUTPUT_PATH }}/*.nupkg"
+          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
