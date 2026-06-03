@@ -22,8 +22,8 @@ permissions:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  PROJECT_PATH: src/DingTalkApi/DingTalkApi.csproj
-  SOLUTION_PATH: src/DingTalkApi.slnx
+  PROJECT_PATH: src/DingTalkApiClient/DingTalkApiClient.csproj
+  SOLUTION_PATH: src/DingTalkApiClient.slnx
   PACKAGE_OUTPUT_PATH: artifacts/packages
 
 jobs:
@@ -87,12 +87,12 @@ jobs:
       - name: Pack
         shell: bash
         env:
-          PACKAGE_ID: ${{ vars.NUGET_PACKAGE_ID || 'DingTalkApi' }}
+          PACKAGE_ID: ${{ vars.NUGET_PACKAGE_ID || 'DingTalkApiClient' }}
           PACKAGE_VERSION: ${{ steps.version.outputs.version }}
-          PACKAGE_TITLE: ${{ vars.NUGET_TITLE || 'DingTalkApi' }}
+          PACKAGE_TITLE: ${{ vars.NUGET_TITLE || 'DingTalkApiClient' }}
           PACKAGE_AUTHORS: ${{ vars.NUGET_AUTHORS || github.repository_owner }}
           PACKAGE_COMPANY: ${{ vars.NUGET_COMPANY || github.repository_owner }}
-          PACKAGE_PRODUCT: ${{ vars.NUGET_PRODUCT || 'DingTalkApi' }}
+          PACKAGE_PRODUCT: ${{ vars.NUGET_PRODUCT || 'DingTalkApiClient' }}
           PACKAGE_DESCRIPTION: ${{ vars.NUGET_DESCRIPTION || '钉钉 API 接口对接库' }}
           PACKAGE_TAGS: ${{ vars.NUGET_TAGS || 'DingTalk;OpenAPI' }}
           PACKAGE_PROJECT_URL: ${{ vars.NUGET_PROJECT_URL || format('{0}/{1}', github.server_url, github.repository) }}
